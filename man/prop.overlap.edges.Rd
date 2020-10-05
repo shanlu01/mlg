@@ -9,9 +9,9 @@ prop.overlap.edges(factor.list, knn.param = 20, prune.param = 1/5)
 \arguments{
 \item{factor.list}{A list that contains several low dimensional embedding data.}
 
-\item{knn.param}{The number of neighbors used to construct k-nearest-neighbot graph}
+\item{knn.param}{The number of neighbors used to construct k-nearest-neighbot graph.}
 
-\item{prune.param}{The prune parameter forSNN graph ??}
+\item{prune.param}{The prune parameter for SNN graph. There is an edge between cell i and j in the SNN graph, if the number of common neighbors between i and j exceeds the product of knn.param and knn.param.}
 }
 \value{
 A heatmap of the proportion of overlapping edges between each pair of SNN graphs constructed from low dimension embeddings.

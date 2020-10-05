@@ -1,13 +1,12 @@
 ######################################################################################################################
-######################################################################################################################
 #' MLG clustering 
 #' This function takes a list of low dimensional embedding data as input, and performs MLG clustering.
 #' @param factor.list A list that contains several low dimensional embedding data.
 #' @param knn.param The number of neighbors used to construct k-nearest-neighbot graph
-#' @param prune.param The prune parameter forSNN graph ??
-#' @param cluster.resolution The resolution number of modularity maximization
+#' @param prune.param The prune parameter for SNN graph. There is an edge between cell i and j in the SNN graph, if the number of common neighbors between i and j exceeds the product of knn.param and knn.param.
+#' @param cluster.resolution The resolution number of modularity maximization.
 #' @param cluster.algorithm The clustering algorithm. 1--Louvain algorithm; 2--Louvain algorithm with multilevel refinement; 3--SLM algorithm.
-#' @return a vector of cluster labels
+#' @return A vector of cluster labels.
 #' @export 
 mlg_cluster <- function(factor.list, knn.param = 20, prune.param = 1/5, cluster.resolution, cluster.algorithm = 1){
   snn.list = .generate_snn_graph(factor.list, knn.param, prune.param)
@@ -16,16 +15,13 @@ mlg_cluster <- function(factor.list, knn.param = 20, prune.param = 1/5, cluster.
   return(cluster)
 }
 
-#cc = mlg_cluster(factor.list = factor.list, knn.param = 20, prune.param = 1/5, 
-#                       cluster.algorithm = 1, cluster.resolution = .3)
-
 ######################################################################################################################
 ######################################################################################################################
 #' This function takes a list of low dimensional embedding data as input, construct a SNN graph for each low dimensional embeddings, and then plot a heatmap of the proportion of overlapping edges between each pair of SNN graphs.
 #'
 #' @param factor.list A list that contains several low dimensional embedding data.
-#' @param knn.param The number of neighbors used to construct k-nearest-neighbot graph
-#' @param prune.param The prune parameter forSNN graph ??
+#' @param knn.param The number of neighbors used to construct k-nearest-neighbot graph.
+#' @param prune.param The prune parameter for SNN graph. There is an edge between cell i and j in the SNN graph, if the number of common neighbors between i and j exceeds the product of knn.param and knn.param.
 #' @return A heatmap of the proportion of overlapping edges between each pair of SNN graphs constructed from low dimension embeddings.
 #' @export 
 prop.overlap.edges <- function(factor.list, knn.param=20, prune.param=1/5){
@@ -42,35 +38,34 @@ prop.overlap.edges <- function(factor.list, knn.param=20, prune.param=1/5){
   melt_matrix =  reshape2::melt(mat)
   melt_matrix=melt_matrix[!is.na(melt_matrix$value),]
   
- 
   p=ggplot2::ggplot(data = melt_matrix, ggplot2::aes(x=Var1, y=Var2, fill=value)) +
     ggplot2::geom_tile()+ggplot2::scale_fill_continuous(low="thistle2", high="darkred", 
                                                                                 guide="colorbar",na.value="white",limits=c(0,1))+
-    ggplot2::xlab("")+ggplot2::ylab("")+ggplot2::labs(fill="Proportion of \noverlapped edges    ")+
+    ggplot2::xlab("")+ggplot2::ylab("")+ggplot2::labs(fill="Proportion of \noverlapping edges    ")+
     ggplot2::theme(axis.text.x = ggplot2::element_text(face="bold",
-                                     size=10),
+                                     size=15),
           axis.text.y = ggplot2::element_text(face="bold",
-                                     size=10),
+                                     size=15),
           legend.text=ggplot2::element_text(size=10),
-          legend.title=ggplot2::element_text(size=12, face="bold"),
+          legend.title=ggplot2::element_text(size=10, face="bold"),
           legend.position = "bottom",
           panel.background = ggplot2::element_blank())+ 
-    ggplot2::geom_text(ggplot2::aes(label = round(value, 2)))
+    ggplot2::geom_text(ggplot2::aes(label = round(value, 2)), size=5) +
+    guides(fill = guide_colourbar(barwidth = 7, barheight = .5))
   return(p)
   
 }
-#prop.overlap.edges(factor.list, knn.param, prune.param)
+
 ######################################################################################################################
 ######################################################################################################################
 #' This function takes a list of low dimensional embedding data, and true cell type labels as input, and 
 #' compute the graph signal to noise ratio of the SNN graphs constructed with each low dimension embeddding
 #' and the MLG graph.
-#'
 #' @param factor.list A list that contains several low dimensional embedding data.
-#' @param knn.param The number of neighbors used to construct k-nearest-neighbot graph
-#' @param prune.param The prune parameter forSNN graph ??
-#' @param cell_label True cell type label
-#' @return a vector of signal to noise ratio, labeled by graph name
+#' @param knn.param The number of neighbors used to construct k-nearest-neighbot graph.
+#' @param prune.param The prune parameter for SNN graph. There is an edge between cell i and j in the SNN graph, if the number of common neighbors between i and j exceeds the product of knn.param and knn.param.
+#' @param cell_label True cell type label.
+#' @return A vector of signal to noise ratio, labeled by graph name.
 #' @export 
 graph_signal_noise_ratio<- function(factor.list, knn.param=20, prune.param=1/5, cell_label){
   cell_label = as.integer(as.factor(cell_label))
@@ -108,8 +103,45 @@ graph_signal_noise_ratio<- function(factor.list, knn.param=20, prune.param=1/5, 
   }
   return(SNR)
 }
-#graph_signal_noise_ratio(factor.list , cell_label =cell_label )
+
 ######################################################################################################################
+######################################################################################################################
+#' MLG  visualization
+#' This function takes a list of low dimensional embedding data as input, and computes coordinates of the force-directed layout for MLG.
+#' @param factor.list A list that contains several low dimensional embedding data.
+#' @param knn.param The number of neighbors used to construct k-nearest-neighbot graph
+#' @param prune.param The prune parameter for SNN graph. There is an edge between cell i and j in the SNN graph, if the number of common neighbors between i and j exceeds the product of knn.param and knn.param.
+#' @param label Labels to be superimposed on the force directed layout of MLG.
+#' @return A ggplot object.
+#' @export 
+mlg_visualization <- function(factor.list, knn.param = 20, prune.param = 1/5, label, label_title = "label"){
+  snn.list = .generate_snn_graph(factor.list, knn.param, prune.param)
+  mlg = .generate_mlg(snn.list)
+  set.seed(1)
+  net=igraph::graph_from_adjacency_matrix(mlg, mode =  "undirected",
+                                  diag = F, add.colnames = NULL, add.rownames = NA)
+  layer_layout=igraph::layout.fruchterman.reingold(net)
+  layer_layout= apply(layer_layout,2, function(i){(i-mean(i))/sd(layer_layout[,2])})
+  coord_mlg= data.frame(Coordinate_1 = layer_layout[,1], 
+                        Coordinate_2 = layer_layout[,2])
+  p<-ggplot(data=data.frame(coord_mlg), 
+            ggplot2::aes(x=Coordinate_1, y=Coordinate_2, color=label)) +
+            ggplot2::geom_point()+
+            ggplot2::labs(color=label_title)+
+            ggplot2::theme_bw()+
+            ggplot2::theme(
+          strip.text.x = ggplot2::element_text(size = 15, face="bold"),
+          axis.title = ggplot2::element_text(size=15, face="bold"),
+          axis.text = ggplot2::element_text(size=15, face="bold"),
+          legend.text=ggplot2::element_text(size=15),
+          legend.title=ggplot2::element_text(size=15, face="bold"),
+          legend.position = "bottom",
+          panel.background = ggplot2::element_blank())+
+            ggplot2::xlab("Force-directed layout_1")+ggplot2::ylab("Force-directed layout_2")
+  return(p)
+}
+######################################################################################################################
+################################################ internal functions ##################################################
 ######################################################################################################################
 .generate_snn_graph <- function(factor.list, knn.param=20, prune.param=1/5){
   n_layer = length(factor.list)
@@ -148,59 +180,3 @@ graph_signal_noise_ratio<- function(factor.list, knn.param=20, prune.param=1/5, 
   mlg[mlg>0]=1
   return(mlg)
 }
-
-#############################################################
-## compute optimal permutations that most cluster labels match
-# .recode<-function(vec1, level1, level2){
-#   vec2=rep(0,length(vec1))
-#   for(i in 1:length(level1)){
-#     vec2[vec1==level1[i]]=level2[i]
-#   }
-#   return(vec2)
-# }
-# 
-# opt.label.permutation <- function(true.label, predict.label){
-#   true.label = as.character(true.label)
-#   predict.label = as.character(predict.label)
-#   num_levels_true = length(unique(true.label))
-#   num_levels_pred = length(unique(predict.label))
-#   
-#   
-#   nperm = min(500, factorial(num_levels_pred))
-#   permute_label = matrix("NA", nrow=length(predict.label), nperm)
-#   if (nperm<500){
-#     perm_matrix = gtools::permutations(num_levels_pred, num_levels_pred)
-#   }
-#   
-#   for ( j in 1:nperm){
-#     if (nperm<500){
-#       recode_pred = .recode(predict.label, unique(predict.label), perm_matrix[j,])
-#     }else{
-#       recode_pred = .recode(predict.label, unique(predict.label), sample(num_levels_pred))
-#     }
-#   
-#     M=matrix(0, nrow = num_levels_true, ncol = num_levels_pred)
-#     
-#     for (i in 1:num_levels_true){
-#       for (k in 1:num_levels_pred){
-#         M[i,k] = mean(recode_pred[true.label==unique(true.label)[i]]==k)
-#       }
-#     }
-# 
-#     idx = 1:num_levels_pred
-#     for (i in 1:num_levels_pred){
-#       idx[i] = which.max(M[,i])
-#       M[idx[i],]=-1
-#     }
-#     permute_label[,j] = rep("NA",length(predict.label))
-#     for (i in 1:num_levels_pred){
-#       permute_label[recode_pred==i,j]=unique(true.label)[idx[i]]
-#     }
-#   }
-#   
-#   match.ratio.vector<-apply(permute_label, 2, function(i){mean(i==true.label)})
-#     
-#   return(list(match.ratio=max(match.ratio.vector), label=permute_label[, which.max(match.ratio.vector)]))
-# }
-# 
-# #opt.label.permutation(cluster_result[[2]], cluster_result[[1]])[[1]]

@@ -6,7 +6,7 @@ Authors@R:
            family = "Lu",
            role = c("aut", "cre"),
            email = "slu92@wisc.edu")
-Description: Given a set of low dimensional embedding data, MLG constructs multilayer graph and perform graph clustering. 
+Description: Given a set of low dimensional embeddings of scRNA-seq data, e.g. PCA factors and cNMF factors, MLG constructs multilayer graph and performs graph clustering. 
 License: `use_mit_license()`
 Encoding: UTF-8
 LazyData: true
@@ -18,11 +18,11 @@ Imports:
     pdfCluster,
     gtools,
     ggplot2,
-    reshape2
+    reshape2,
+    igraph
 Suggests: 
     knitr,
-    rmarkdown,
-    testthat (>= 2.1.0)
+    rmarkdown
 VignetteBuilder: knitr
 Depends: R (>= 3.6)
 biocViews:

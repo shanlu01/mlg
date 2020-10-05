@@ -16,14 +16,14 @@ graph_signal_noise_ratio(
 \arguments{
 \item{factor.list}{A list that contains several low dimensional embedding data.}
 
-\item{knn.param}{The number of neighbors used to construct k-nearest-neighbot graph}
+\item{knn.param}{The number of neighbors used to construct k-nearest-neighbot graph.}
 
-\item{prune.param}{The prune parameter forSNN graph ??}
+\item{prune.param}{The prune parameter for SNN graph. There is an edge between cell i and j in the SNN graph, if the number of common neighbors between i and j exceeds the product of knn.param and knn.param.}
 
-\item{cell_label}{True cell type label}
+\item{cell_label}{True cell type label.}
 }
 \value{
-a vector of signal to noise ratio, labeled by graph name
+A vector of signal to noise ratio, labeled by graph name.
 }
 \description{
 This function takes a list of low dimensional embedding data, and true cell type labels as input, and

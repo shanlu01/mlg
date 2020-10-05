@@ -2,4 +2,5 @@
 
 export(graph_signal_noise_ratio)
 export(mlg_cluster)
+export(mlg_visualization)
 export(prop.overlap.edges)
