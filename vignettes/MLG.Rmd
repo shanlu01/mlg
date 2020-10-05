@@ -1,0 +1,182 @@
+---
+title: "Vignette for MLG: multi-layer graph clustering for scRNA-seq data"
+author: "Shan Lu"
+output: 
+  rmarkdown::html_document:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{MLG Vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+```{r setup}
+suppressPackageStartupMessages({
+  library(RColorBrewer)
+  library(ggplot2)
+  library(cowplot)
+  library(knitr)
+  library(Seurat)
+  library(liger)
+  library(mlg)
+})
+data("kowalczyk_1", package = "mlg")
+theme_set(theme_classic())
+```
+
+# Dataset description
+- Three variables are stored in "kowalczyk_1": gene_expression_matrix, cell_info, cnmf_factor.
+- "gene_expression_matrix" stores the logTPM of 1058 cells.
+- "cell_info" stores the true cell type labels (LT-HSC, MPP, ST-HSC) and condition labels (old and young) of the cells.
+- "cnmf_factor" stores the coordinates from cNMF decomposition. We include cNMF factors here, because cNMF package is implemented in python.
+
+# Clustering analysis
+## Perform PCA, tSNE and Louvain clustering with PCA factors.
+
+```{r, fig.hold='hold', fig.width=8, fig.height=6}
+# number of component to be kept for each dimension reduction method
+num_component <- 15
+
+# generate Seurat object
+kowalczyk_seurat <- CreateSeuratObject(counts = gene_expression_matrix, project = "kowalczyk_seurat ", 
+                              assay = "RNA",
+                              meta.data = cell_info)
+
+kowalczyk_seurat <- FindVariableFeatures(kowalczyk_seurat, selection.method = "vst", nfeatures = 3000, verbose = F)
+kowalczyk_seurat <- ScaleData(kowalczyk_seurat, vars.to.regress = 'condition_label', verbose = F)
+kowalczyk_seurat <- RunPCA(kowalczyk_seurat, npcs=num_component, verbose = F)
+kowalczyk_seurat <- RunTSNE(kowalczyk_seurat, dims = 1:num_component, verbose = F)
+kowalczyk_seurat <- FindNeighbors(kowalczyk_seurat, dims = 1:num_component, verbose = F)
+kowalczyk_seurat <- FindClusters(kowalczyk_seurat, resolution = 0.2, algorithm =1, verbose = F)
+tSNE_coord_PCA <- data.frame(kowalczyk_seurat@reductions$tsne@cell.embeddings)
+# Visualization of the dataset on tSNE coordinates
+plot_grid(ggplot(tSNE_coord_PCA,aes(tSNE_1, tSNE_2, color=cell_info$cell_type_label))+
+            geom_point()+labs(color="cell type")+theme(legend.position = "bottom"),
+          ggplot(tSNE_coord_PCA,aes(tSNE_1, tSNE_2, color=kowalczyk_seurat$seurat_clusters))+
+            labs(color="cluster")+theme(legend.position = "bottom")+geom_point())
+# The Adjusted Rand Index(ARI) of the Louvain-PCA clustering
+pdfCluster::adj.rand.index(kowalczyk_seurat$seurat_clusters, cell_info$cell_type_label)
+
+```
+
+
+## Perform Seurat integration, tSNE and Louvain clustering with PCA components based on Seurat integrated data.
+
+```{r, fig.hold='hold', fig.width=8, fig.height=6}
+# Seurat integration
+condition.list <- SplitObject(kowalczyk_seurat, split.by = "condition_label")
+int.anchors <- FindIntegrationAnchors(object.list = condition.list, anchor.features=3000, verbose = F)
+kowalczyk.integrated <- IntegrateData(anchorset = int.anchors, verbose = F)
+DefaultAssay(kowalczyk.integrated) <- "integrated"
+# Reorder the cells, so that the cell order in object kowalczyk.integrated is the same as in original dataset.
+kowalczyk.integrated@assays$integrated@data<- kowalczyk.integrated@assays$integrated@data[, rownames(cell_info)]
+kowalczyk.integrated@meta.data<-kowalczyk.integrated@meta.data[rownames(cell_info),]
+kowalczyk.integrated <- ScaleData(kowalczyk.integrated, verbose = F)
+kowalczyk.integrated <- RunPCA(kowalczyk.integrated, npcs = 30, verbose = F)
+kowalczyk.integrated <- RunTSNE(kowalczyk.integrated, verbose = F)
+kowalczyk.integrated <- FindNeighbors(kowalczyk.integrated,dims = 1:num_component, k.param = 20, verbose = F)
+kowalczyk.integrated <- FindClusters(kowalczyk.integrated, resolution = 0.22, algorithm = 1, verbose = F)
+tSNE_coord_Seurat <- data.frame(kowalczyk.integrated@reductions$tsne@cell.embeddings)
+# Visualization of the dataset on tSNE coordinates
+plot_grid(ggplot(tSNE_coord_Seurat,aes(tSNE_1, tSNE_2, color=cell_info$cell_type_label))+
+            geom_point()+labs(color="cell type")+theme(legend.position = "bottom"),
+          ggplot(tSNE_coord_Seurat,aes(tSNE_1, tSNE_2, color=kowalczyk.integrated$seurat_clusters))+
+            labs(color="cluster")+theme(legend.position = "bottom")+geom_point())
+# The Adjusted Rand Index(ARI) of the Seurat clustering
+pdfCluster::adj.rand.index(kowalczyk.integrated$seurat_clusters, cell_info$cell_type_label)
+
+```
+
+## Perform Liger integration, tSNE and Louvain clustering with Liger factors.
+
+```{r, fig.hold='hold', fig.width=8, fig.height=6, message=F, warning=F}
+
+ligerex = createLiger(list(young=condition.list[[1]]@assays$RNA@counts, 
+                           old=condition.list[[2]]@assays$RNA@counts)) 
+ligerex = liger::normalize(ligerex)
+ligerex = selectGenes(ligerex, var.thresh = .7281) # keep 3000 genes
+length(ligerex@var.genes)
+ligerex = scaleNotCenter(ligerex)
+
+ligerex = optimizeALS(ligerex, k = num_component) 
+ligerex = quantileAlignSNF(ligerex, resolution=0.4)
+ligerex<- runTSNE(ligerex)
+
+tSNE_coord_Liger <- data.frame(ligerex@tsne.coords)
+colnames(tSNE_coord_Liger) <- c("tSNE_1", "tSNE_2")
+# Visualization of the dataset on tSNE coordinates
+plot_grid(ggplot(tSNE_coord_Liger,aes(tSNE_1, tSNE_2, color=cell_info$cell_type_label))+
+            geom_point()+labs(color="cell type")+theme(legend.position = "bottom"),
+          ggplot(tSNE_coord_Liger,aes(tSNE_1, tSNE_2, color=ligerex@clusters))+
+            labs(color="cluster")+theme(legend.position = "bottom")+geom_point())
+# The Adjusted Rand Index(ARI) of the Liger clustering
+pdfCluster::adj.rand.index(ligerex@clusters, cell_info$cell_type_label)
+
+```
+
+## Perform cNMF decomposition, tSNE and Louvain clustering with cNMF factors.
+
+```{r, fig.hold='hold', fig.width=8, fig.height=6,  message=F, warning=F}
+
+cnmf_graph <- FindNeighbors(cnmf_factor, verbose = F)
+cnmf_cluster <- FindClusters(cnmf_graph$snn, resolution = 0.15, algorithm =1, verbose = F)[[1]]
+tSNE_cNMF<-RunTSNE(cnmf_factor, verbose=F)
+tSNE_coord_cNMF =data.frame(tSNE_cNMF@cell.embeddings)
+# Visualization of the dataset on tSNE coordinates
+plot_grid(ggplot(tSNE_coord_cNMF,aes(tSNE_1, tSNE_2, color=cell_info$cell_type_label))+
+            geom_point()+labs(color="cell type")+theme(legend.position = "bottom"),
+          ggplot(tSNE_coord_cNMF,aes(tSNE_1, tSNE_2, color=cnmf_cluster))+
+            labs(color="cluster")+theme(legend.position = "bottom")+geom_point())
+# The Adjusted Rand Index(ARI) of the Louvain-cNMF clustering
+pdfCluster::adj.rand.index(cnmf_cluster, cell_info$cell_type_label)
+
+```
+
+
+## MLG clustering
+
+```{r, fig.hold='hold', fig.width=10, fig.height=10}
+
+# reordering and scaling of raw liger factors
+liger_factor=rbind(ligerex@H$young,ligerex@H$old)
+# reorder the cells, so that the cell order are the same as in original data
+liger_factor=liger_factor[rownames(cell_info),]
+# scale the penalized NMF score for each cell, so that they sums to 1
+liger_factor=t(apply(liger_factor, 1, function(i){i/sum(i)}))
+
+factor_list<- list(PCA=kowalczyk_seurat@reductions$pca@cell.embeddings[,1:num_component],
+                   cNMF=cnmf_factor,
+                   Seurat=kowalczyk.integrated@reductions$pca@cell.embeddings[,1:num_component],
+                   Liger=liger_factor)
+# perform MLG clustering 
+MLG = mlg_cluster(factor.list = factor_list, cluster.resolution=.5)
+
+# The Adjusted Rand Index(ARI) of the MLG clustering
+pdfCluster::adj.rand.index(MLG, cell_info$cell_type_label)
+
+# visualization of the overlapping (which characterizes dependences) between different SNN layers.
+p = prop.overlap.edges(factor_list)
+p
+
+# compute graph signal to noice ratio of the SNN graph constructed from PCA, cNMF, Seurat, Liger factors and MLG.
+graph_signal_noise_ratio(factor_list, knn.param=20, prune.param=1/5, cell_label=cell_info$cell_type_label)
+
+# compare clustering ARI of the 5 methods.
+clustering_acc = c(pdfCluster::adj.rand.index(kowalczyk_seurat$seurat_clusters, cell_info$cell_type_label),
+  pdfCluster::adj.rand.index(cnmf_cluster, cell_info$cell_type_label),
+  pdfCluster::adj.rand.index(kowalczyk.integrated$seurat_clusters, cell_info$cell_type_label),
+  pdfCluster::adj.rand.index(ligerex@clusters, cell_info$cell_type_label),
+  pdfCluster::adj.rand.index(MLG, cell_info$cell_type_label))
+names(clustering_acc) = c("PCA", "cNMF", "Seurat", "Liger", "MLG")
+print(clustering_acc)
+```
+
+
+
+# Session
+
+```{r}
+sessionInfo()
+```

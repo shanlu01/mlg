@@ -1,0 +1,35 @@
+Package: mlg
+Title: MLG Clustering
+Version: 0.0.1
+Authors@R: 
+    person(given = "Shan",
+           family = "Lu",
+           role = c("aut", "cre"),
+           email = "slu92@wisc.edu")
+Description: Given a set of low dimensional embedding data, MLG constructs multilayer graph and perform graph clustering. 
+License: `use_mit_license()`
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports: 
+    Seurat (>= 3.1.0),
+    Matrix,
+    pdfCluster,
+    gtools,
+    ggplot2,
+    reshape2
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 2.1.0)
+VignetteBuilder: knitr
+Depends: R (>= 3.6)
+biocViews:
+    Clustering,
+    GeneExpression,
+    scRNASeq,
+    Software,
+    SingleCell,
+    Transcriptomics
+
