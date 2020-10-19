@@ -15,6 +15,18 @@ multi-layer shared nearest neighbor (SNN) graph from these
 low-dimensional embeddings and performs Louvain graph partitioning
 algorithm.
 
+<div class="figure" style="text-align: center">
+
+<img src="man/figures/mlg_workflow.png" alt="Figure: MLG workflow" width="100%" />
+
+<p class="caption">
+
+Figure: MLG workflow
+
+</p>
+
+</div>
+
 ## Installation tips
 
 The vignettes of mlg package depend on R package [Liger (Linked

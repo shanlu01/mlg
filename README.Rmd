@@ -17,6 +17,9 @@ knitr::opts_chunk$set(
 
 MLG is an integrative clustering approach for single cell RNA-seq data across multiple experimental conditions. MLG takes multiple low-dimensional embedding data of gene expression matrix as input, e.g. low dimension embeddings from dimension reduction methods like PCA, [cNMF](https://github.com/dylkot/cNMF), or from data integration methods like  [Seurat](https://satijalab.org/seurat/), [Liger](https://macoskolab.github.io/liger/). It constructs a multi-layer shared nearest neighbor (SNN) graph from these low-dimensional embeddings and performs Louvain graph partitioning algorithm. 
 
+```{r pressure, echo=FALSE, fig.cap="Figure: MLG workflow", out.width = '100%', fig.align='center'}
+knitr::include_graphics("man/figures/mlg_workflow.png")
+```
 
 ## Installation tips
 
